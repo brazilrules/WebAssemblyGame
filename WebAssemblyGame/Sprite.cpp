@@ -1,6 +1,6 @@
 #include "constants.h"
 #include "Sprite.h"
-//#include <math.h>
+#include <SDL_image.h>
 
 Sprite::Sprite(int x, int y, int speed, std::string imageFile, int frameCount, int dirCount) :
 	frameCount(frameCount), currentFrame(0), currentDirection(DOWN), speed(speed), moving(STOPPED)
@@ -12,6 +12,8 @@ Sprite::Sprite(int x, int y, int speed, std::string imageFile, int frameCount, i
 	sampleRect.y = 0;
 	sampleRect.h = image->h / dirCount;
 	sampleRect.w = image->w / frameCount;
+	xSpeed = 0;
+	ySpeed = 0;
 }
 
 Sprite::~Sprite()
@@ -95,7 +97,7 @@ void Sprite::stop(DIRECTION direction) {
 	if (!xSpeed && ! ySpeed) moving = STOPPED;
 }
 
-void Sprite::update(int frame) {
+void Sprite::update(int frame, SDL_Surface* screen) {
 	if (moving) {
 		if (std::abs(xSpeed) > std::abs(ySpeed)) {
 			currentDirection = xSpeed > 0 ? RIGHT : LEFT;
@@ -118,4 +120,6 @@ void Sprite::update(int frame) {
 	else {
 		sampleRect.x = 0;
 	}
+
+	SDL_BlitSurface(image, &sampleRect, screen, &position);
 }

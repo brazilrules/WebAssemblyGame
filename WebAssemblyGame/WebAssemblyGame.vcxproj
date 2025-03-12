@@ -71,8 +71,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\Tools\SDL2_image-2.8.4\include;C:\Tools\SDL2-2.30.11\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Tools\SDL2_image-2.8.4\lib\x64;C:\Tools\SDL2-2.30.11\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Tools\SDL2_image-2.8.4\include;C:\Tools\SDL2-2.30.11\include;C:\Tools\SDL2_ttf-2.24.0\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Tools\SDL2_image-2.8.4\lib\x64;C:\Tools\SDL2-2.30.11\lib\x64;C:\Tools\SDL2_ttf-2.24.0\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -112,7 +112,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_image.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_image.lib;SDL2_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -132,15 +132,29 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Character.cpp" />
+    <ClCompile Include="HUDElement.cpp" />
+    <ClCompile Include="HUDElement.h" />
+    <ClCompile Include="Monster.cpp" />
+    <ClCompile Include="Player.cpp" />
+    <ClCompile Include="PopUpHUDElement.cpp" />
+    <ClCompile Include="PopUpHUDElement.h" />
+    <ClCompile Include="Skill.cpp" />
     <ClCompile Include="Sprite.cpp" />
     <ClCompile Include="StartGameState.cpp" />
     <ClCompile Include="StartGameState.h" />
+    <ClCompile Include="utils.cpp" />
     <ClCompile Include="WebAssemblyGame.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Character.h" />
     <ClInclude Include="constants.h" />
+    <ClInclude Include="Monster.h" />
+    <ClInclude Include="Player.h" />
+    <ClInclude Include="Skill.h" />
     <ClInclude Include="Sprite.h" />
     <ClInclude Include="State.h" />
+    <ClInclude Include="utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SDL_surface.h>
-#include <SDL_image.h>
 #include <string>
 
 enum DIRECTION {
@@ -49,7 +48,12 @@ public:
 	void stop();
 	void stop(DIRECTION direction);
 
-	void update(int frame);
+	bool isInBounds(SDL_Point coords) {
+		return (coords.x > (getCenter().x - getFrameWidth() / 2) && coords.x < (getCenter().x + getFrameWidth() / 2)
+			&& coords.y >(getCenter().y - getFrameHeight() / 2) && coords.y < (getCenter().y + getFrameHeight() / 2));
+	}
+
+	void update(int frame, SDL_Surface* screen);
 
 
 private:

@@ -6,135 +6,233 @@
 #include <iostream>
 #include <SDL.h>
 #include <SDL_image.h>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #include "Sprite.h"
+#include "Player.h"
+#include "Monster.h"
+#include "HUDElement.h"
 
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
 
+SDL_Window* window = NULL;
+SDL_Surface* screenSurface = NULL;
+
+TTF_Font* font;
+
+SDL_Event e;
+
+Character* player;
+Character* monster;
+
+HUDElement* hudHP;
+HUDElement* deathMessage;
+HUDElement* winMessage;
+
+int frame = 0;
+SDL_Point target;
+bool quit;
+bool clicked;
+bool holding;
+
+void mainLoop() {
+    while (SDL_PollEvent(&e)) {
+        switch (e.type) {
+        case SDL_KEYDOWN:
+            switch (e.key.keysym.sym) {
+            case SDLK_UP:
+                player->getSprite().move(UP);
+                break;
+            case SDLK_RIGHT:
+                player->getSprite().move(RIGHT);
+                break;
+            case SDLK_DOWN:
+                player->getSprite().move(DOWN);
+                break;
+            case SDLK_LEFT:
+                player->getSprite().move(LEFT);
+                break;
+            case SDLK_r:
+                player->takeDamage(-100);
+                player->getSprite().setX(0);
+                player->getSprite().setY(0);
+                monster->takeDamage(-20);
+                monster->getSprite().setX(SCREEN_WIDTH / 2);
+                monster->getSprite().setY(SCREEN_HEIGHT / 2);
+            }
+            break;
+        case SDL_KEYUP:
+            switch (e.key.keysym.sym) {
+            case SDLK_UP:
+                player->getSprite().stop(UP);
+                break;
+            case SDLK_RIGHT:
+                player->getSprite().stop(RIGHT);
+                break;
+            case SDLK_DOWN:
+                player->getSprite().stop(DOWN);
+                break;
+            case SDLK_LEFT:
+                player->getSprite().stop(LEFT);
+                break;
+            }
+            break;
+        case SDL_MOUSEBUTTONDOWN:
+            switch (e.button.button) {
+            case SDL_BUTTON_LEFT:
+                target = { e.button.x, e.button.y };
+                clicked = true;
+                holding = true;
+                break;
+            }
+            break;
+        case SDL_MOUSEBUTTONUP:
+            switch (e.button.button) {
+            case SDL_BUTTON_LEFT:
+                holding = false;
+                break;
+            }
+            break;
+        case SDL_QUIT:
+            quit = true;
+            break;
+        }
+    }
+
+    if ((holding || player->isAttacking()) && monster->getSprite().isInBounds(target)) {
+        player->attackEnemy(*monster);
+        clicked = false;
+    }
+
+    if (clicked && (target.x != player->getSprite().getCenter().x || target.y != player->getSprite().getCenter().y)) {
+        player->getSprite().moveTowards(target);
+    }
+    else if (clicked) {
+        player->getSprite().stop();
+        clicked = false;
+    }
+
+    ((Monster*)monster)->checkPlayerProximity(*player);
+
+
+
+    SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0xFF, 0x8F, 0x8F));
+
+    player->update(frame, screenSurface);
+    monster->update(frame, screenSurface);
+
+    SDL_Rect textPos{ 200, 200, 400, 100 };
+
+    hudHP->update(frame, std::to_string(player->getHP()), screenSurface);
+
+    if (!player->getHP()) deathMessage->update(frame, "", screenSurface);
+
+    if (!monster->getHP()) winMessage->update(frame, "", screenSurface);
+
+    SDL_UpdateWindowSurface(window);
+
+    frame++;
+}
+
 int main()
 {
-    SDL_Window* window = NULL;
-    SDL_Surface* screenSurface = NULL;
 
-    //SDL_Surface* imageSurface = NULL;
-
-    if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
+    std::cout << "Initializing SDL!" << std::endl;
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) {
         std::cout << "SDL couldn't initialize! SDL Error: " << SDL_GetError() << std::endl;
 
         return EXIT_FAILURE;
     }
-    
 
+    std::cout << "Initializing SDL_TTF!" << std::endl;
+    if (TTF_Init() < 0) {
+        std::cerr << "Failed to initialize SDL_TTF: " << TTF_GetError() << std::endl;
+        SDL_Quit();
+        return -1;
+    }
+
+    std::cout << "Initializing SDL_IMG!" << std::endl;
+    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
+        std::cout << "Failed to initialize SDL_Image for PNG: " << IMG_GetError() << std::endl;
+        TTF_Quit();
+        SDL_Quit();
+        return EXIT_FAILURE;
+    }
+    
+    std::cout << "Creating Window!" << std::endl;
     window = SDL_CreateWindow("X Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     if (window == NULL) {
         std::cout << "Window couldn't be created! SDL Error: " << SDL_GetError() << std::endl;
-
+        TTF_Quit();
+        SDL_Quit();
         return EXIT_FAILURE;
     }
 
-    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
-        std::cout << "Failed to initialize SDL_Image for PNG: " << IMG_GetError() << std::endl;
-    }
-        
+    std::cout << "Creating Font!" << std::endl;
+    // Load a font
+    font = TTF_OpenFont("assets/fonts/Ldfcomicsans-jj7l.ttf", 24);
+    if (!font) {
+        std::cerr << "Failed to load font: " << TTF_GetError() << std::endl;
+        SDL_DestroyWindow(window);
+        TTF_Quit();
+        SDL_Quit();
+        return -1;
+    }   
 
-    std::cout << "Hello World!\n";
+    std::cout << "Creating Screen Surface!" << std::endl;
 
     screenSurface = SDL_GetWindowSurface(window);
+ 
+    std::cout << "Creating Units!" << std::endl;
+    player = new Player(100, 50, 10, 10, 10, 5, 5, 5, "assets/gfx/Player.png", font, std::vector<Skill>());
+    monster = new Monster(20, 0, 30, 10, 5, "assets/gfx/Monster.png", font, 10, 150, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
 
-    SDL_Event e; 
-    bool quit = false;
+    std::cout << "Creating HUD Elements!" << std::endl;
+    hudHP = new HUDElement(font, "HP", std::to_string(player->getHP()), SDL_Rect{ 10, 10 });
+    deathMessage = new HUDElement(font, "You Died, Press R to try again.", "", SDL_Rect{ SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2,0,0 }, SDL_Color{ 255,0,0,255 });
+    winMessage = new HUDElement(font, "You Won!, Press R to play again.", "", SDL_Rect{ SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2,0,0 }, SDL_Color{ 0,255,0,255 });
 
-    //imageSurface = IMG_Load("gfx\\Player.png");
-    Sprite player(0, 0, 5, std::string("gfx\\Player.png"));
-
-    if (player.getImage() == NULL) {
+    if (player->getSprite().getImage() == NULL) {
         std::cout << "SDL could not load image: " << IMG_GetError() << std::endl;
         
         return EXIT_FAILURE;
     }
 
-    SDL_Rect screenRect = { 400, 300, 0, 0 };
-    SDL_Rect spriteRect = { 0, 0, 96, 96 };
+    if (monster->getSprite().getImage() == NULL) {
+        std::cout << "SDL could not load image: " << IMG_GetError() << std::endl;
 
-    int frame = 0;
+        return EXIT_FAILURE;
+    }
+    
     Uint64 start;
-    SDL_Point target = player.getCenter();
-    bool clicked = false;
-
+    target = player->getSprite().getCenter();
+    quit = false;
+    clicked = false;
+    holding = false;
+    std::cout << "Main Loop!" << std::endl;
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop(mainLoop, 0, 1);
+#else
     while (!quit)
     {
         start = SDL_GetTicks64();
         
-        while (SDL_PollEvent(&e)) {
-            switch (e.type) {
-                case SDL_KEYDOWN:
-                    switch (e.key.keysym.sym) {
-                        case SDLK_UP:
-                            player.move(UP);
-                            break;
-                        case SDLK_RIGHT:
-                            player.move(RIGHT);
-                            break;
-                        case SDLK_DOWN:
-                            player.move(DOWN);
-                            break;
-                        case SDLK_LEFT:
-                            player.move(LEFT);
-                            break;
-                    }
-                    break;
-                case SDL_KEYUP:
-                    switch (e.key.keysym.sym) {
-                    case SDLK_UP:
-                        player.stop(UP);
-                        break;
-                    case SDLK_RIGHT:
-                        player.stop(RIGHT);
-                        break;
-                    case SDLK_DOWN:
-                        player.stop(DOWN);
-                        break;
-                    case SDLK_LEFT:
-                        player.stop(LEFT);
-                        break;
-                    }
-                    break;
-                case SDL_MOUSEBUTTONDOWN:
-                    switch (e.button.button) {
-                        case SDL_BUTTON_LEFT:
-                            target = {e.button.x, e.button.y};
-                            clicked = true;
-                            break;
-                    }
-                    break;
-                case SDL_QUIT: 
-                    quit = true;
-                    break;
-            }
-        }
-
-        if (clicked && (target.x != player.getCenter().x || target.y != player.getCenter().y)) {
-            player.moveTowards(target);
-        }
-        else if (clicked) {
-            player.stop();
-            clicked = false;
-        }
-
-        player.update(frame);
-        
-        SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0xFF, 0x8F, 0x8F));
-
-        SDL_BlitSurface(player.getImage(), player.getSampleRect(), screenSurface, player.getPosition());
-
-        SDL_UpdateWindowSurface(window);
+        mainLoop();
 
         if (1000 / FPS > SDL_GetTicks64() - start) {
             SDL_Delay(1000 / FPS - (SDL_GetTicks64() - start));
         }
 
-        frame++;
     }
+#endif
+
+    delete player;
+    delete monster;
+    delete hudHP;
+    delete deathMessage;
+    delete winMessage;
 
     SDL_FreeSurface(screenSurface);
         

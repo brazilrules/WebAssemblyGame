@@ -4,3 +4,4 @@ WebAssemblyGame/x64/
 WebAssemblyGame/WebAssemblyGame.vcxproj.user
 WebAssemblyGame/SDL2.dll
 WebAssemblyGame/SDL2_image.dll
+WebAssemblyGame/SDL2_ttf.dll
